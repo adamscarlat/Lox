@@ -80,6 +80,7 @@ class Parser {
 
     private final List<Token> tokens;
     private int current = 0;
+    private int loopDepth = 0;
 
     Parser(List<Token> tokens) {
         this.tokens = tokens;
@@ -113,6 +114,7 @@ class Parser {
         if (match(FOR)) return forStatement();
         if (match(IF)) return ifStatement();
         if (match(WHILE)) return whileStatement();
+        if (match(BREAK)) return breakStatement();
         if (match(PRINT)) return printStatement();
         if (match(LEFT_BRACE)) return new Stmt.Block(block());
 
@@ -146,41 +148,47 @@ class Parser {
         }
         consume(RIGHT_PAREN, "Expect ')' after for clauses.");
 
-        // for loop body
-        Stmt body = statement();
+        try{
+            loopDepth++;
 
-        /*
-         instead of creating another Stmt for a for loop, we can re-use the
-         whileStmt type. At the end, a for loop is a while loop with some
-         syntactic sugar...
-        * */
+            // for loop body
+            Stmt body = statement();
 
-        // if there is an increment, add it to the body of the while loop (at the end)
-        if (increment != null) {
-            body = new Stmt.Block(
-                    Arrays.asList(
-                            body,
-                            new Stmt.Expression(increment)
-                    )
-            );
+            /*
+             instead of creating another Stmt for a for loop, we can re-use the
+             whileStmt type. At the end, a for loop is a while loop with some
+             syntactic sugar...
+            * */
+
+            // if there is an increment, add it to the body of the while loop (at the end)
+            if (increment != null) {
+                body = new Stmt.Block(
+                        Arrays.asList(
+                                body,
+                                new Stmt.Expression(increment)
+                        )
+                );
+            }
+
+            // if there isn't a condition, it's a while(true) loop...
+            if (condition == null)
+                condition = new Expr.Literal(true);
+
+            // here we have a for loop translated into a while loop.
+            // the initializer has to be defined before the while loop, so we
+            // add it next.
+            body = new Stmt.While(condition, body);
+
+            // if there is an initializer, put it BEFORE the while loop
+            if (initializer != null) {
+                body = new Stmt.Block(Arrays.asList(initializer, body));
+            }
+
+            return body;
+
+        } finally {
+            loopDepth--;
         }
-
-        // if there isn't a condition, it's a while(true) loop...
-        if (condition == null)
-            condition = new Expr.Literal(true);
-
-        // here we have a for loop translated into a while loop.
-        // the initializer has to be defined before the while loop, so we
-        // add it next.
-        body = new Stmt.While(condition, body);
-
-        // if there is an initializer, put it BEFORE the while loop
-        if (initializer != null) {
-            body = new Stmt.Block(Arrays.asList(initializer, body));
-        }
-
-
-        return body;
     }
 
     private Stmt ifStatement() {
@@ -220,9 +228,23 @@ class Parser {
         consume(LEFT_PAREN, "Expect '(' after 'while'.");
         Expr condition = expression();
         consume(RIGHT_PAREN, "Expect ')' after condition.");
-        Stmt body = statement();
 
-        return new Stmt.While(condition, body);
+        try {
+            loopDepth++;
+            Stmt body = statement();
+
+            return new Stmt.While(condition, body);
+        } finally {
+            loopDepth--;
+        }
+    }
+
+    private Stmt breakStatement() {
+        if (loopDepth == 0) {
+            error(previous(), "Must be inside a loop to use 'break'.");
+        }
+        consume(SEMICOLON, "Expect ';' after 'break'.");
+        return new Stmt.Break();
     }
 
     private Stmt expressionStatement() {

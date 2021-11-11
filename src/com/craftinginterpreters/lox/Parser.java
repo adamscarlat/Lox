@@ -1,6 +1,7 @@
 package com.craftinginterpreters.lox;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static com.craftinginterpreters.lox.TokenType.*;
@@ -15,8 +16,15 @@ import static com.craftinginterpreters.lox.TokenType.*;
                    | statement ;
 
     statement      → exprStmt
+                   | ifStmt
                    | printStmt
+                   | whileStmt
                    | block ;
+
+    whileStmt      → "while" "(" expression ")" statement ;
+
+    ifStmt         → "if" "(" expression ")" statement
+                   ( "else" statement )? ;
 
     exprStmt       → expression ";" ;
     printStmt      → "print" expression ";" ;
@@ -97,11 +105,77 @@ class Parser {
     }
 
     private Stmt statement() {
+        if (match(FOR)) return forStatement();
         if (match(IF)) return ifStatement();
+        if (match(WHILE)) return whileStatement();
         if (match(PRINT)) return printStatement();
         if (match(LEFT_BRACE)) return new Stmt.Block(block());
 
         return expressionStatement();
+    }
+
+    private Stmt forStatement() {
+        consume(LEFT_PAREN, "Expect '(' after 'for'.");
+
+        // for loop initializer
+        Stmt initializer;
+        if (match(SEMICOLON)) {
+            initializer = null;
+        } else if (match(VAR)) {
+            initializer = varDeclaration();
+        } else {
+            initializer = expressionStatement();
+        }
+
+        // for loop condition
+        Expr condition = null;
+        if (!check(SEMICOLON)) {
+            condition = expression();
+        }
+        consume(SEMICOLON, "Expect ';' after loop condition.");
+
+        // for loop increment
+        Expr increment = null;
+        if (!check(RIGHT_PAREN)) {
+            increment = expression();
+        }
+        consume(RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        // for loop body
+        Stmt body = statement();
+
+        /*
+         instead of creating another Stmt for a for loop, we can re-use the
+         whileStmt type. At the end, a for loop is a while loop with some
+         syntactic sugar...
+        * */
+
+        // if there is an increment, add it to the body of the while loop (at the end)
+        if (increment != null) {
+            body = new Stmt.Block(
+                    Arrays.asList(
+                            body,
+                            new Stmt.Expression(increment)
+                    )
+            );
+        }
+
+        // if there isn't a condition, it's a while(true) loop...
+        if (condition == null)
+            condition = new Expr.Literal(true);
+
+        // here we have a for loop translated into a while loop.
+        // the initializer has to be defined before the while loop, so we
+        // add it next.
+        body = new Stmt.While(condition, body);
+
+        // if there is an initializer, put it BEFORE the while loop
+        if (initializer != null) {
+            body = new Stmt.Block(Arrays.asList(initializer, body));
+        }
+
+
+        return body;
     }
 
     private Stmt ifStatement() {
@@ -135,6 +209,15 @@ class Parser {
 
         consume(SEMICOLON, "Expect ';' after variable declaration.");
         return new Stmt.Var(name, initializer);
+    }
+
+    private Stmt whileStatement() {
+        consume(LEFT_PAREN, "Expect '(' after 'while'.");
+        Expr condition = expression();
+        consume(RIGHT_PAREN, "Expect ')' after condition.");
+        Stmt body = statement();
+
+        return new Stmt.While(condition, body);
     }
 
     private Stmt expressionStatement() {

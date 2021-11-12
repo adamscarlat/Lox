@@ -12,8 +12,7 @@ import static com.craftinginterpreters.lox.TokenType.*;
 
     block          → "{" declaration* "}" ;
 
-    declaration    → varDecl
-                   | statement ;
+    declaration    → funDecl | varDecl | statement ;
 
     statement      → exprStmt
                    | forStmt
@@ -33,11 +32,13 @@ import static com.craftinginterpreters.lox.TokenType.*;
 
     exprStmt       → expression ";" ;
     printStmt      → "print" expression ";" ;
+
     varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+    funDecl        → "fun" function ;
+    function       → IDENTIFIER "(" parameters? ")" block ;
 
     // expressions
-    expression     → comma ;
-    comma          → assignment ("," assignment)* ;
+    expression     → assignment ;
     assignment     → IDENTIFIER "=" assignment | logic_or ;
 
     logic_or       → logic_and ( "or" logic_and )* ;
@@ -47,8 +48,9 @@ import static com.craftinginterpreters.lox.TokenType.*;
     comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     term           → factor ( ( "-" | "+" ) factor )* ;
     factor         → unary ( ( "/" | "*" ) unary )* ;
-    unary          → ( "!" | "-" ) unary
-                   | primary ;
+    unary          → ( "!" | "-" ) unary | call ;
+    call           → primary ( "(" arguments? ")" )* ;
+    arguments      → expression ( "," expression )* ;
     primary        → NUMBER | STRING | "true" | "false" | "nil"
                    | "(" expression ")" | IDENTIFIER ;
                    // Error productions... if we got to the bottom and encountered these,
@@ -59,12 +61,12 @@ import static com.craftinginterpreters.lox.TokenType.*;
                    | ( "/" | "*" ) factor ;
 
     These rules define how we build a syntax tree. They are ordered according to precedence.
-    Starting from the top (lowest precedence), each rule defines itself and anything with equal
+    Starting from the top (the lowest precedence), each rule defines itself and anything with equal
     or higher precedence. This way we can nest expressions according to their precedence.
 
     Example: 6 / 3 - 1
 
-    expression -> equality -> comparison -> term (until now we didnt encounter anything that matched).
+    expression -> equality -> comparison -> term (until now we didn't encounter anything that matched).
 
     -> factor - factor -> (unary / unary) - (unary) -> (primary / primary) - primary
 
@@ -96,11 +98,12 @@ class Parser {
     }
 
     private Expr expression() {
-        return comma();
+        return assignment();
     }
 
     private Stmt declaration() {
         try {
+            if (match(FUN)) return function("function");
             if (match(VAR)) return varDeclaration();
 
             return statement();
@@ -253,6 +256,27 @@ class Parser {
         return new Stmt.Expression(expr);
     }
 
+    // kind - function or method
+    private Stmt.Function function(String kind) {
+        Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
+        consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+        List<Token> parameters = new ArrayList<>();
+        if (!check(RIGHT_PAREN)) {
+            do {
+                if (parameters.size() >= 255) {
+                    error(peek(), "Can't have more than 255 parameters.");
+                }
+
+                parameters.add(consume(IDENTIFIER, "Expect parameter name."));
+            } while (match(COMMA));
+        }
+        consume(RIGHT_PAREN, "Expect ')' after parameters.");
+
+        consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+        List<Stmt> body = block();
+        return new Stmt.Function(name, parameters, body);
+    }
+
     private List<Stmt> block() {
         List<Stmt> statements = new ArrayList<>();
 
@@ -262,19 +286,6 @@ class Parser {
 
         consume(RIGHT_BRACE, "Expect '}' after block.");
         return statements;
-    }
-
-    //CHALLANGE 6.1 - comma op
-    private Expr comma() {
-        Expr expr = assignment();
-
-        while (match(COMMA)) {
-            Token operator = previous();
-            Expr right = assignment();
-            expr = new Expr.Binary(expr, operator, right);
-        }
-
-        return expr;
     }
 
     private Expr assignment() {
@@ -386,7 +397,37 @@ class Parser {
             return new Expr.Unary(operator, right);
         }
 
-        return primary();
+        return call();
+    }
+
+    private Expr call() {
+        Expr expr = primary();
+
+        while (true) {
+            if (match(LEFT_PAREN)) {
+                expr = finishCall(expr);
+            } else {
+                break;
+            }
+        }
+
+        return expr;
+    }
+
+    private Expr finishCall(Expr callee) {
+        List<Expr> arguments = new ArrayList<>();
+        if (!check(RIGHT_PAREN)) {
+            do {
+                if (arguments.size() >= 255) {
+                    error(peek(), "Can't have more than 255 arguments to a function.");
+                }
+                arguments.add(expression());
+            } while (match(COMMA));
+        }
+
+        Token paren = consume(RIGHT_PAREN, "Expect ')' after arguments.");
+
+        return new Expr.Call(callee, paren, arguments);
     }
 
     private Expr primary() {

@@ -60,6 +60,11 @@ public class Lox {
         // Stop if there was a syntax error.
         if (hadError) return;
 
+        // resolve variables to their environments (by mapping a depth to each variable)
+        // before runtime
+        Resolver resolver = new Resolver(interpreter);
+        resolver.resolve(statements);
+
         interpreter.interpret(statements);
     }
 

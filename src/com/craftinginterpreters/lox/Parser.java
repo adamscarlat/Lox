@@ -18,6 +18,7 @@ import static com.craftinginterpreters.lox.TokenType.*;
                    | forStmt
                    | ifStmt
                    | printStmt
+                   | returnStmt
                    | whileStmt
                    | block ;
 
@@ -32,6 +33,7 @@ import static com.craftinginterpreters.lox.TokenType.*;
 
     exprStmt       → expression ";" ;
     printStmt      → "print" expression ";" ;
+    returnStmt     → "return" expression? ";" ;
 
     varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
     funDecl        → "fun" function ;
@@ -119,6 +121,7 @@ class Parser {
         if (match(WHILE)) return whileStatement();
         if (match(BREAK)) return breakStatement();
         if (match(PRINT)) return printStatement();
+        if (match(RETURN)) return returnStatement();
         if (match(LEFT_BRACE)) return new Stmt.Block(block());
 
         return expressionStatement();
@@ -213,6 +216,17 @@ class Parser {
         Expr value = expression();
         consume(SEMICOLON, "Expect ';' after value.");
         return new Stmt.Print(value);
+    }
+
+    private Stmt returnStatement() {
+        Token keyword = previous();
+        Expr value = null;
+        if (!check(SEMICOLON)) {
+            value = expression();
+        }
+
+        consume(SEMICOLON, "Expect ';' after return value.");
+        return new Stmt.Return(keyword, value);
     }
 
     private Stmt varDeclaration() {

@@ -43,7 +43,7 @@ import static com.craftinginterpreters.lox.TokenType.*;
 
     // expressions
     expression     → assignment ;
-    assignment     → IDENTIFIER "=" assignment | logic_or ;
+    assignment     → ( call "." )? IDENTIFIER "=" assignment | logic_or ;
 
     logic_or       → logic_and ( "or" logic_and )* ;
     logic_and      → equality ( "and" equality )* ;
@@ -53,7 +53,7 @@ import static com.craftinginterpreters.lox.TokenType.*;
     term           → factor ( ( "-" | "+" ) factor )* ;
     factor         → unary ( ( "/" | "*" ) unary )* ;
     unary          → ( "!" | "-" ) unary | call ;
-    call           → primary ( "(" arguments? ")" )* ;
+    call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
     arguments      → expression ( "," expression )* ;
     primary        → NUMBER | STRING | "true" | "false" | "nil"
                    | "(" expression ")" | IDENTIFIER ;
@@ -334,13 +334,18 @@ class Parser {
             */
             Expr value = assignment();
 
-            // makes sure we only assign to expressions of type Variable.
+            // makes sure we only assign to expressions of type Variable or of type Get (for instance props access).
             // examples:
             // a = 2 -> OK
             // a + b = 2 -> Error. The left side is a binary expression
+            // bagel.with = "cream cheese" -> OK
+            // breakfast.eggs.with = bagel -> OK
             if (expr instanceof Expr.Variable) {
                 Token name = ((Expr.Variable)expr).name;
                 return new Expr.Assign(name, value);
+            } else if (expr instanceof Expr.Get) {
+                Expr.Get get = (Expr.Get) expr;
+                return new Expr.Set(get.object, get.name, value);
             }
 
             error(equals, "Invalid assignment target.");
@@ -437,6 +442,9 @@ class Parser {
         while (true) {
             if (match(LEFT_PAREN)) {
                 expr = finishCall(expr);
+            } else if (match(DOT)) {
+                Token name = consume(IDENTIFIER, "Expect property name after '.'.");
+                expr = new Expr.Get(expr, name);
             } else {
                 break;
             }

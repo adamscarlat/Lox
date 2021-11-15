@@ -3,5 +3,10 @@ class DevonshireCream {
     return "Scones";
   }
 }
-
 print DevonshireCream;
+
+var iceCreamServing = DevonshireCream();
+print iceCreamServing;
+
+iceCreamServing.price = 4;
+print iceCreamServing.price;

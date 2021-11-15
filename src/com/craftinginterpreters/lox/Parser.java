@@ -12,7 +12,7 @@ import static com.craftinginterpreters.lox.TokenType.*;
 
     block          → "{" declaration* "}" ;
 
-    declaration    → funDecl | varDecl | statement ;
+    declaration    → classDecl | funDecl | varDecl | statement ;
 
     statement      → exprStmt
                    | forStmt
@@ -35,8 +35,10 @@ import static com.craftinginterpreters.lox.TokenType.*;
     printStmt      → "print" expression ";" ;
     returnStmt     → "return" expression? ";" ;
 
+    classDecl      → "class" IDENTIFIER "{" function* "}" ;
     varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
     funDecl        → "fun" function ;
+
     function       → IDENTIFIER "(" parameters? ")" block ;
 
     // expressions
@@ -105,6 +107,7 @@ class Parser {
 
     private Stmt declaration() {
         try {
+            if (match(CLASS)) return classDeclaration();
             if (match(FUN)) return function("function");
             if (match(VAR)) return varDeclaration();
 
@@ -268,6 +271,20 @@ class Parser {
         Expr expr = expression();
         consume(SEMICOLON, "Expect ';' after expression.");
         return new Stmt.Expression(expr);
+    }
+
+    private Stmt classDeclaration() {
+        Token name = consume(IDENTIFIER, "Expect class name.");
+        consume(LEFT_BRACE, "Expect '{' before class body.");
+
+        List<Stmt.Function> methods = new ArrayList<>();
+        while (!check(RIGHT_BRACE) && !isAtEnd()) {
+            methods.add(function("method"));
+        }
+
+        consume(RIGHT_BRACE, "Expect '}' after class body.");
+
+        return new Stmt.Class(name, methods);
     }
 
     // kind - function or method

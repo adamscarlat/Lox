@@ -10,3 +10,4 @@ print iceCreamServing;
 
 iceCreamServing.price = 4;
 print iceCreamServing.price;
+print iceCreamServing.serveOn();

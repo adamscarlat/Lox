@@ -1,6 +1,8 @@
 package com.craftinginterpreters.lox;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /*
@@ -66,6 +68,19 @@ class Environment {
 
     Object getAt(int distance, String name) {
         return ancestor(distance).values.get(name);
+    }
+
+    List<Object> getAll(String name) {
+        Environment current = this;
+        List<Object> objects = new ArrayList<>();
+        while (current != null) {
+            if (current.values.get(name) != null) {
+                objects.add(current.values.get(name));
+            }
+            current = current.enclosing;
+        }
+
+        return objects;
     }
 
     void assignAt(int distance, Token name, Object value) {

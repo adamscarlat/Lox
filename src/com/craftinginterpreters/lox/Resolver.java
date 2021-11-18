@@ -106,16 +106,24 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         declare(stmt.name);
         define(stmt.name);
 
-        if (stmt.superclass != null && stmt.name.lexeme.equals(stmt.superclass.name.lexeme)) {
-            Lox.error(stmt.superclass.name, "A class can't inherit from itself.");
+//        if (stmt.superclass != null && stmt.name.lexeme.equals(stmt.superclass.name.lexeme)) {
+//            Lox.error(stmt.superclass.name, "A class can't inherit from itself.");
+//        }
+
+        if (stmt.superclasses != null && stmt.superclasses.size() > 0 && stmt.superclasses.contains(stmt.name.lexeme)) {
+            Lox.error(stmt.name, "A class can't inherit from itself.");
         }
 
-        if (stmt.superclass != null) {
+
+        if (stmt.superclasses != null && stmt.superclasses.size() > 0) {
             currentClass = ClassType.SUBCLASS;
-            resolve(stmt.superclass);
+            //resolve(stmt.superclasses);
+            for (Expr.Variable superclass: stmt.superclasses) {
+                resolve(superclass);
+            }
         }
 
-        if (stmt.superclass != null) {
+        if (stmt.superclasses != null && stmt.superclasses.size() > 0) {
             beginScope();
             scopes.peek().put("super", true);
         }
@@ -134,7 +142,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
         endScope();
 
-        if (stmt.superclass != null) endScope();
+        if (stmt.superclasses != null && stmt.superclasses.size() > 0) endScope();
 
         currentClass = enclosingClass;
         return null;

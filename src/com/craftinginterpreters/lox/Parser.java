@@ -277,10 +277,17 @@ class Parser {
         Token name = consume(IDENTIFIER, "Expect class name.");
 
         // is there a superclass defined?
-        Expr.Variable superclass = null;
+        //Expr.Variable superclass = null;
+        List<Expr.Variable> superclasses = new ArrayList<>();
         if (match(LESS)) {
             consume(IDENTIFIER, "Expect superclass name.");
-            superclass = new Expr.Variable(previous());
+            superclasses.add(new Expr.Variable(previous()));
+            // more than one super class?
+            while (match(COMMA)) {
+                consume(IDENTIFIER, "Expect superclass name.");
+                superclasses.add(new Expr.Variable(previous()));
+            }
+            //superclass = new Expr.Variable(previous());
         }
 
         consume(LEFT_BRACE, "Expect '{' before class body.");
@@ -292,7 +299,7 @@ class Parser {
 
         consume(RIGHT_BRACE, "Expect '}' after class body.");
 
-        return new Stmt.Class(name, superclass, methods);
+        return new Stmt.Class(name, superclasses, methods);
     }
 
     // kind - function or method

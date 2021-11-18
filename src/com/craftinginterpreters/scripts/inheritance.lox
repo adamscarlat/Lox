@@ -4,10 +4,24 @@ class Doughnut {
   }
 }
 
-class BostonCream < Doughnut {
+class Organic {
+    makeMoreExpensive() {
+        print "Made more expensive";
+    }
+}
+
+class Decorator {
+    decorate() {
+        print "Sprinkle sprinkle";
+    }
+}
+
+class BostonCream < Doughnut, Organic , Decorator {
     cook() {
         print "Add cream";
         super.cook();
+        super.makeMoreExpensive();
+        super.decorate();
     }
 }
 

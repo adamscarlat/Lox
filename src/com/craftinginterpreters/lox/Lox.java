@@ -3,10 +3,13 @@ package com.craftinginterpreters.lox;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class Lox {
     private static final Interpreter interpreter = new Interpreter();
@@ -26,11 +29,24 @@ public class Lox {
 
     // running a source file
     private static void runFile(String path) throws IOException {
-        byte[] bytes = Files.readAllBytes(Paths.get(path));
-        run(new String(bytes, Charset.defaultCharset()));
+        byte[] builtinsBytes = setupBuiltins();
+        byte[] newlineBytes = System.getProperty("line.separator").getBytes();
+        byte[] userBytes = Files.readAllBytes(Paths.get(path));
+
+        ByteBuffer bb = ByteBuffer.allocate(builtinsBytes.length + newlineBytes.length + userBytes.length);
+        bb.put(builtinsBytes);
+        bb.put(newlineBytes);
+        bb.put(userBytes);
+
+        run(new String(bb.array(), Charset.defaultCharset()));
 
         if (hadError) System.exit(65);
         if (hadRuntimeError) System.exit(70);
+    }
+
+    private static byte[] setupBuiltins() throws IOException {
+        byte[] bytes = Files.readAllBytes(Paths.get("src/com/craftinginterpreters/builtins/files.lox"));
+        return bytes;
     }
 
     // REPL like prompt

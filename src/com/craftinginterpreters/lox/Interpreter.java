@@ -1,5 +1,8 @@
 package com.craftinginterpreters.lox;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +30,31 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
             @Override
             public String toString() { return "<native fn>"; }
+        });
+
+        globals.define("read", new LoxCallable() {
+            @Override
+            public int arity() {
+                return 1;
+            }
+
+            @Override
+            public Object call(Interpreter interpreter, List<Object> arguments) {
+                if (arguments == null || arguments.size() == 0)
+                    throw new RuntimeError(new Token(TokenType.VAR, "read", null, -1), "Cannot call read with no arguments. Missing path");
+
+                Object path = arguments.get(0);
+                if (!(path instanceof String))
+                    throw new RuntimeError(new Token(TokenType.VAR, "read", null, -1), "Path must be a string");
+
+                String pathStr = (String)path;
+
+                try {
+                    return Files.readAllLines(Paths.get(pathStr));
+                } catch (IOException e) {
+                    throw new RuntimeError(new Token(TokenType.VAR, "read", null, -1), "Error reading file");
+                }
+            }
         });
     }
 

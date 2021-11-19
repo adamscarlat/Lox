@@ -1,0 +1,9 @@
+class File {
+    init(path) {
+        this.path = path;
+    }
+
+    read() {
+        return read(this.path);
+    }
+}

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="jlox">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jlox/out/production/jlox/com/craftinginterpreters/lox/jlox.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

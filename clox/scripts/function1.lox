@@ -1,0 +1,8 @@
+fun testFunc(a, b) {
+  var x = 3;
+  var res = x + a + b;
+
+  return res;
+}
+
+testFunc(1, 2);

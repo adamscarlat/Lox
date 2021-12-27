@@ -30,7 +30,9 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${fileDirname}\\clox.exe",
-      "args": ["C:\\Users\\AdamScarlat\\Documents\\Training\\CraftingInterpreters\\Lox\\clox\\scripts\\classes2.lox"],
+      "args": [
+        "C:\\Users\\AdamScarlat\\Documents\\Training\\CraftingInterpreters\\Lox\\clox\\scripts\\superclass1.lox"
+      ],
       "stopAtEntry": false,
       "cwd": "${fileDirname}",
       "environment": [],
